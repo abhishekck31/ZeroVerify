@@ -7,8 +7,11 @@ on:
     branches: [main]
 
 concurrency:
+  # Superseded pull-request runs are worth cancelling, but every commit on a
+  # long-lived branch should end with a real pass or fail rather than
+  # "cancelled".
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   frontend:
@@ -33,6 +36,9 @@ jobs:
 
       - name: Lint
         run: npx next lint
+
+      - name: Test
+        run: npm test
 
       - name: Build
         # The build prerenders pages wrapped in <ClerkProvider>, which refuses
