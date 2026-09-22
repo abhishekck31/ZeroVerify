@@ -126,14 +126,37 @@ async fn main() {
     sp1_sdk::utils::setup_logger();
     dotenv::dotenv().ok();
 
-    let prover = std::env::var("SP1_PROVER").unwrap_or_default();
-    let key = std::env::var("NETWORK_PRIVATE_KEY").unwrap_or_default();
+    // Proving backend. "network" delegates to the Succinct Prover Network and
+    // needs a funded account; "cpu" proves on this machine instead, which is
+    // far slower but requires no account. The service previously asserted on
+    // "network", so there was no way to run it without paid credentials.
+    let prover = match std::env::var("SP1_PROVER") {
+        Ok(v) if !v.trim().is_empty() => v.trim().to_lowercase(),
+        _ => "cpu".to_string(),
+    };
 
-    assert_eq!(prover, "network", "SP1_PROVER must be set to 'network'");
-    assert!(
-        key.starts_with("0x") && key.len() > 10,
-        "Invalid or missing NETWORK_PRIVATE_KEY"
-    );
+    match prover.as_str() {
+        "network" => {
+            let key = std::env::var("NETWORK_PRIVATE_KEY").unwrap_or_default();
+            assert!(
+                key.starts_with("0x") && key.len() > 10,
+                "SP1_PROVER=network requires a valid NETWORK_PRIVATE_KEY"
+            );
+            tracing::info!("proving via the Succinct Prover Network");
+        }
+        "cpu" | "local" => {
+            tracing::warn!(
+                "proving locally on CPU - a Groth16 proof takes minutes and needs                  plenty of RAM; Docker must be running for the Groth16 wrapper"
+            );
+        }
+        "mock" => {
+            tracing::warn!("SP1_PROVER=mock - proofs are NOT cryptographically valid");
+        }
+        other => panic!("Unsupported SP1_PROVER '{other}' (expected network, cpu or mock)"),
+    }
+
+    // sp1-sdk reads this back through ProverClient::from_env().
+    std::env::set_var("SP1_PROVER", &prover);
 
     tracing::info!("deriving proving and verifying keys (one-time)...");
     let client = ProverClient::from_env();
