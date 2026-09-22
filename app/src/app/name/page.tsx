@@ -40,7 +40,7 @@ const Page = () => {
     if (!userEmail) return;
     setFetching(true);
     try {
-      const res = await getNameDashboardData(userEmail);
+      const res = await getNameDashboardData();
       if (res.success) {
         if (!res.data) {
           toast.message("No data found");
@@ -75,7 +75,7 @@ const Page = () => {
 
     setLoading(true);
     try {
-      const res = await createNameVerify(name, userEmail, receiverEmail);
+      const res = await createNameVerify(name, receiverEmail);
 
       if (res.success) {
         setSuccess(true);

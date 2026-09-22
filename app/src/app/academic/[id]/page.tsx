@@ -358,12 +358,6 @@ export default function EnhancedAcademicVerifier({
     try {
       const result = await sendAcademicProofMail(
         res._id,
-        res.email,
-        res.recieverEmail,
-        res.proverName,
-        res.proverAcademicId,
-        res.proverInstitute,
-        res.proverCGPA,
         publicKeyPEM ?? "",
         proofData
       );

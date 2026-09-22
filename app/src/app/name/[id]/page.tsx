@@ -242,9 +242,6 @@ export default function EnhancedPDFVerifier({
     try {
       const result = await sendProofMail(
         res._id,
-        res.email,
-        res.recieverEmail,
-        res.proverName,
         publicKeyPEM ?? "",
         proofData
       );

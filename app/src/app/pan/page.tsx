@@ -37,14 +37,14 @@ const PanVerificationDashboard = () => {
     if (!userEmail) return;
     setFetching(true);
     try {
-      const res = await getPanDashboardData(userEmail);
+      const res = await getPanDashboardData();
       if (res.success) {
         if (!res.data) {
           toast.message("No data found");
           return;
         }
-        setReceivedRequests(res.data.recievedPanVerificationsRequest || []);
-        setSentRequests(res.data.sentPanVerificationsRequest || []);
+        setReceivedRequests(res.data.recievedVerificationsRequest || []);
+        setSentRequests(res.data.sentVerificationsRequest || []);
       } else {
         toast.error(res.message || "Failed to fetch data.");
       }
@@ -68,7 +68,7 @@ const PanVerificationDashboard = () => {
 
     setLoading(true);
     try {
-      const res = await createPanVerify(name, panId, userEmail, receiverEmail);
+      const res = await createPanVerify(name, panId, receiverEmail);
       if (res.success) {
         setSuccess(true);
         setPanId("");

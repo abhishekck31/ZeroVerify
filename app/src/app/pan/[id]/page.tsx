@@ -303,10 +303,6 @@ export default function EnhancedPANVerifier({
     try {
       const result = await sendPanProofMail(
         res._id,
-        res.email,
-        res.recieverEmail,
-        res.proverName,
-        res.proverPanId,
         publicKeyPEM ?? "",
         proofData
       );

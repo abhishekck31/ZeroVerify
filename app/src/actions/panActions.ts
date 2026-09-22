@@ -3,96 +3,118 @@
 import connectToDB from "@/utils/connectToDb";
 import PanVerify from "@/models/panModel";
 import {
+  assertParticipant,
+  requireCaller,
+  toActionError,
+} from "@/lib/authz";
+import { consume, LIMITS } from "@/lib/rateLimit";
+import {
   sendNamePanVerificationEmail,
   sendConfirmedPanVerificationMail,
 } from "@/utils/mail/panMail";
+
+/** Raises a PAN verification request on behalf of the signed-in caller. */
 export async function createPanVerify(
   proverName: string,
   proverPanId: string,
-  email: string,
   recieverEmail: string
 ) {
   try {
+    const caller = await requireCaller();
+    consume(`createPanVerify:${caller.email}`, LIMITS.createRequest);
+
+    const candidate = recieverEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(candidate)) {
+      return { success: false as const, message: "That email address is not valid." };
+    }
+
+    const pan = proverPanId.trim().toUpperCase();
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) {
+      return {
+        success: false as const,
+        message: "That is not a valid PAN (expected five letters, four digits, one letter).",
+      };
+    }
+
     await connectToDB();
     const newPanVerify = new PanVerify({
       proverName,
-      proverPanId,
-      email,
-      recieverEmail,
+      proverPanId: pan,
+      email: caller.email,
+      recieverEmail: candidate,
     });
     await newPanVerify.save();
+
     await sendNamePanVerificationEmail(
-      recieverEmail,
-      email,
+      candidate,
+      caller.email,
       proverName,
-      proverPanId,
+      pan,
       newPanVerify._id
     );
-
-    return { message: "Pan Verify created successfully", success: true };
+    return { success: true as const, message: "Pan Verify created successfully" };
   } catch (err) {
-    return {
-      message: "Something went wrong",
-      success: false,
-      error: err,
-    };
+    return toActionError(err, "Could not create the verification request.");
   }
 }
+
+/** Reads one request. Only the employer and the candidate on it may do so. */
 export async function getVerifyPan(id: string) {
   try {
+    const caller = await requireCaller();
+
     await connectToDB();
     const panVerify = await PanVerify.findById(id);
     if (!panVerify) {
-      return { message: "Name Verify not found", success: false };
+      return { success: false as const, message: "Pan Verify not found" };
     }
+    assertParticipant(panVerify, caller);
 
     return {
-      message: "Name Verify fetched successfully",
-      success: true,
+      success: true as const,
+      message: "Pan Verify fetched successfully",
       data: panVerify,
     };
   } catch (err) {
-    return {
-      message: "Something went wrong",
-      success: false,
-      error: err,
-    };
+    return toActionError(err, "Could not load the verification request.");
   }
 }
 
+/** Records a proof against a request and notifies the employer. */
 export async function sendPanProofMail(
   id: string,
-  to: string,
-  fromEmail: string,
-  proverName: string,
-  proverPanId: string,
   publicKeyPEM: string,
   proofData: any
 ) {
   try {
-    await connectToDB();
-    const nameVerify = await PanVerify.findById(id);
-    if (!nameVerify) {
-      return { message: "Name Verify not found", success: false };
-    }
-    nameVerify.snark = proofData;
-    nameVerify.isVerified = true;
-    nameVerify.signature = publicKeyPEM;
-    await nameVerify.save();
-    await sendConfirmedPanVerificationMail(
-      to,
-      fromEmail,
-      proverName,
-      proverPanId,
+    const caller = await requireCaller();
+    consume(`sendPanProofMail:${caller.email}`, LIMITS.submitProof);
 
-      nameVerify._id
+    await connectToDB();
+    const panVerify = await PanVerify.findById(id);
+    if (!panVerify) {
+      return { success: false as const, message: "Pan Verify not found" };
+    }
+    assertParticipant(panVerify, caller);
+
+    if (panVerify.isVerified) {
+      return { success: false as const, message: "This request is already completed." };
+    }
+
+    panVerify.snark = proofData;
+    panVerify.isVerified = true;
+    panVerify.signature = publicKeyPEM;
+    await panVerify.save();
+
+    await sendConfirmedPanVerificationMail(
+      panVerify.email,
+      panVerify.recieverEmail,
+      panVerify.proverName,
+      panVerify.proverPanId,
+      panVerify._id
     );
-    return { message: "Proof mail sent successfully", success: true };
+    return { success: true as const, message: "Proof mail sent successfully" };
   } catch (err) {
-    return {
-      message: "Something went wrong",
-      success: false,
-      error: err,
-    };
+    return toActionError(err, "Could not submit the proof.");
   }
 }

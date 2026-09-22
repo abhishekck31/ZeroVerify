@@ -43,7 +43,7 @@ const AcademicVerificationPage = () => {
     if (!userEmail) return;
     setFetching(true);
     try {
-      const res = await getAcademicDashboardData(userEmail);
+      const res = await getAcademicDashboardData();
       if (res.success) {
         if (!res.data) {
           toast.message("No data found");
@@ -83,7 +83,6 @@ const AcademicVerificationPage = () => {
         proverAcademicId,
         proverInstitute,
         proverCGPA,
-        userEmail,
         receiverEmail
       );
       if (res.success) {

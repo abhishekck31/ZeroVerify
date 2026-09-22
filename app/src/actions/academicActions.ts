@@ -3,84 +3,100 @@
 import connectToDB from "@/utils/connectToDb";
 import AcademicVerify from "@/models/academicModel";
 import {
+  assertParticipant,
+  requireCaller,
+  toActionError,
+} from "@/lib/authz";
+import { consume, LIMITS } from "@/lib/rateLimit";
+import {
   sendAcademicVerificationEmail,
   sendConfirmedAcademicVerificationEmail,
 } from "@/utils/mail/academicMail";
+
+/** Raises an academic verification request on behalf of the signed-in caller. */
 export async function createAcademicVerify(
   proverName: string,
   proverAcademicId: string,
   proverInstitute: string,
   proverCGPA: string,
-  email: string,
   recieverEmail: string
 ) {
   try {
-    await connectToDB();
-    const newPanVerify = new AcademicVerify({
-      proverName,
-      proverAcademicId,
-      proverInstitute,
-      proverCGPA,
-      email,
-      recieverEmail,
-    });
-    await newPanVerify.save();
-    await sendAcademicVerificationEmail(
-      recieverEmail,
-      email,
-      proverName,
-      proverAcademicId,
-      proverInstitute,
-      proverCGPA,
-      newPanVerify._id
-    );
+    const caller = await requireCaller();
+    consume(`createAcademicVerify:${caller.email}`, LIMITS.createRequest);
 
-    return { message: "Pan Verify created successfully", success: true };
+    const candidate = recieverEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(candidate)) {
+      return { success: false as const, message: "That email address is not valid." };
+    }
+
+    await connectToDB();
+    const newAcademicVerify = new AcademicVerify({
+      proverName,
+      proverAcademicId,
+      proverInstitute,
+      proverCGPA,
+      email: caller.email,
+      recieverEmail: candidate,
+    });
+    await newAcademicVerify.save();
+
+    await sendAcademicVerificationEmail(
+      candidate,
+      caller.email,
+      proverName,
+      proverAcademicId,
+      proverInstitute,
+      proverCGPA,
+      newAcademicVerify._id
+    );
+    return { success: true as const, message: "Academic Verify created successfully" };
   } catch (err) {
-    return {
-      message: "Something went wrong",
-      success: false,
-      error: err,
-    };
+    return toActionError(err, "Could not create the verification request.");
   }
 }
+
+/** Reads one request. Only the employer and the candidate on it may do so. */
 export async function getVerifyAcademic(id: string) {
   try {
+    const caller = await requireCaller();
+
     await connectToDB();
     const academicVerify = await AcademicVerify.findById(id);
     if (!academicVerify) {
-      return { message: "Name Verify not found", success: false };
+      return { success: false as const, message: "Academic Verify not found" };
     }
+    assertParticipant(academicVerify, caller);
 
     return {
-      message: "Name Verify fetched successfully",
-      success: true,
+      success: true as const,
+      message: "Academic Verify fetched successfully",
       data: academicVerify,
     };
   } catch (err) {
-    return {
-      message: "Something went wrong",
-      success: false,
-      error: err,
-    };
+    return toActionError(err, "Could not load the verification request.");
   }
 }
+
+/** Records a proof against a request and notifies the employer. */
 export async function sendAcademicProofMail(
   id: string,
-  to: string,
-  fromEmail: string,
-  proverName: string,
-  proverAcademicId: string,
-  proverInstitute: string,
-  proverCGPA: string,
   publicKeyPEM: string,
   proofData: any
 ) {
   try {
+    const caller = await requireCaller();
+    consume(`sendAcademicProofMail:${caller.email}`, LIMITS.submitProof);
+
     await connectToDB();
     const academicVerify = await AcademicVerify.findById(id);
     if (!academicVerify) {
-      return { message: "Academic Verify not found", success: false };
+      return { success: false as const, message: "Academic Verify not found" };
+    }
+    assertParticipant(academicVerify, caller);
+
+    if (academicVerify.isVerified) {
+      return { success: false as const, message: "This request is already completed." };
     }
 
     academicVerify.snark = proofData;
@@ -89,21 +105,16 @@ export async function sendAcademicProofMail(
     await academicVerify.save();
 
     await sendConfirmedAcademicVerificationEmail(
-      to,
-      fromEmail,
-      proverName,
-      proverAcademicId,
-      proverInstitute,
-      proverCGPA,
+      academicVerify.email,
+      academicVerify.recieverEmail,
+      academicVerify.proverName,
+      academicVerify.proverAcademicId,
+      academicVerify.proverInstitute,
+      academicVerify.proverCGPA,
       academicVerify._id
     );
-
-    return { message: "Academic proof mail sent successfully", success: true };
+    return { success: true as const, message: "Academic proof mail sent successfully" };
   } catch (err) {
-    return {
-      message: "Something went wrong",
-      success: false,
-      error: err,
-    };
+    return toActionError(err, "Could not submit the proof.");
   }
 }
