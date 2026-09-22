@@ -70,6 +70,7 @@ export async function sendPanProofMail(
   proofData: any
 ) {
   try {
+    await connectToDB();
     const nameVerify = await PanVerify.findById(id);
     if (!nameVerify) {
       return { message: "Name Verify not found", success: false };

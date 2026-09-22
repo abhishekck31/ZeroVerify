@@ -65,6 +65,7 @@ export async function sendProofMail(
   proofData: any
 ) {
   try {
+    await connectToDB();
     const nameVerify = await NameVerify.findById(id);
     if (!nameVerify) {
       return { message: "Name Verify not found", success: false };
