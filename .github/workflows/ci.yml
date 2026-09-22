@@ -1,33 +1,65 @@
-name: PDF Utils CI
+name: CI
 
 on:
   push:
-    paths:
-      - "pdf-utils/**"
+    branches: [main, dev]
   pull_request:
-    paths:
-      - "pdf-utils/**"
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  frontend:
+    name: Frontend (typecheck, lint, build)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx next lint
+
+      - name: Build
+        # The build prerenders pages wrapped in <ClerkProvider>, which refuses
+        # to render without a publishable key. This is a throwaway key of the
+        # right shape, not a real credential.
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
+          CLERK_SECRET_KEY: sk_test_ci_placeholder
+        run: npm run build
+
+  pdf-utils:
+    name: PDF utils (Rust)
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: pdf-utils
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
         with:
-          toolchain: stable
-          override: true
+          workspaces: pdf-utils
 
-      - name: Build PDF Utils workspace
+      - name: Build
         run: cargo build --workspace --verbose
 
-      - name: Test PDF Utils
+      - name: Test
         run: cargo test --workspace --verbose
