@@ -25,7 +25,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # 22+: some transitive dev dependencies now declare it as their
+          # minimum supported engine.
+          node-version: "22"
           cache: npm
           cache-dependency-path: app/package-lock.json
 
