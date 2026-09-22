@@ -991,12 +991,18 @@ Before setting up ZeroVerify, ensure you have:
 **Terminal 1 - Prover Service**:
 
 ```bash
-cd circuits/script
-SP1_PROVER=network \
-NETWORK_PRIVATE_KEY=your_succinct_key \
-RUST_LOG=info \
-cargo run --release --bin prover
+cd circuits
+
+# Local proving - no account required. A Groth16 proof takes minutes and
+# needs Docker running for the Groth16 wrapper.
+SP1_PROVER=cpu RUST_LOG=info cargo run --release --bin prover
+
+# Or delegate to the Succinct Prover Network (fast, needs a funded account):
+# SP1_PROVER=network NETWORK_PRIVATE_KEY=0x... cargo run --release --bin prover
 ```
+
+The service listens on `:3001` and exposes `/health`, `/prove` and `/verify`.
+Point the frontend at it with `NEXT_PUBLIC_PROVER_URL`.
 
 **Terminal 2 - Frontend Development**:
 
@@ -1098,23 +1104,28 @@ NEXT_PUBLIC_API_URL=http://localhost:3000
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_key
 CLERK_SECRET_KEY=your_clerk_secret
 
-# SP1 / Prover Service Configuration (circuits/script)
-SP1_PROVER=network  # or 'local'
-NETWORK_PRIVATE_KEY=your_succinct_network_private_key
+# SP1 / Prover Service Configuration (circuits/.env)
+SP1_PROVER=cpu           # 'cpu' (no account), 'network' (funded account), or 'mock'
+# NETWORK_PRIVATE_KEY=0x...   # only when SP1_PROVER=network
+# ALLOWED_ORIGIN=https://your-app.vercel.app   # restrict CORS in production
 PORT=3001
 RUST_LOG=info
 ```
 
 #### Build Commands
 
-```bash
-# Build everything
-make build-all
+There is no Makefile; build each part directly:
 
-# Or step by step:
-make build-pdf-utils
-make build-circuits
-make build-frontend
+```bash
+# 1. WASM module (required before the frontend will build)
+cd pdf-utils/wasm && wasm-pack build --target web --out-dir pkg
+mkdir -p ../../app/public/pkg && cp -r pkg/. ../../app/public/pkg/
+
+# 2. Prover service
+cd ../../circuits && cargo build --release --bin prover
+
+# 3. Frontend
+cd ../app && npm ci && npm run build
 ```
 
 ### 🚢 Production Deployment
@@ -1339,6 +1350,31 @@ const verifyResult = wasm.wasm_verify_text(
 ---
 
 ## Security & Privacy
+
+### Authorization model
+
+Every server action in `app/src/actions/` is a public HTTP endpoint, so none of
+them trust their arguments for identity:
+
+- The caller is resolved from the Clerk session with `requireCaller()`
+  (`app/src/lib/authz.ts`). Actions do not accept an email argument, so a
+  caller cannot ask for somebody else's records.
+- A verification request is readable and writable only by the two parties named
+  on it - the employer who raised it and the candidate who answers it -
+  enforced by `assertParticipant()`.
+- Notification recipients are read from the stored record, never from the
+  request, so the mail account cannot be used to send to arbitrary addresses.
+- Creating requests and submitting proofs are rate limited per caller
+  (`app/src/lib/rateLimit.ts`). The counters live in process, so on a
+  serverless host the limit applies per instance; move them to Redis for a
+  hard global guarantee.
+- Internal errors are logged server side and reported generically, so database
+  and stack details do not reach the client.
+
+Uploaded PDFs are validated in the browser (`app/src/lib/pdfFile.ts`) by magic
+bytes and size before any of them reach the WASM module, and the document
+itself never leaves the device.
+
 
 ### 🛡️ Security Architecture
 
