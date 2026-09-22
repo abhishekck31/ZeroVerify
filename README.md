@@ -1497,6 +1497,18 @@ We welcome contributions to ZeroVerify! Please see our [Contributing Guide](CONT
 4. **Push to the branch** (`git push origin feature/amazing-feature`)
 5. **Open a Pull Request**
 
+### 📜 Attribution
+
+ZeroVerify's Rust PDF layer (`pdf-utils/`) and zero-knowledge circuits
+(`circuits/`) are derived from the MIT-licensed
+[zkpdf](https://github.com/privacy-scaling-explorations/zkpdf) project by
+Privacy & Scaling Explorations, whose copyright notice is retained in
+[LICENSE](LICENSE) as that license requires.
+
+The DigiLocker verification workflow, the Next.js application in `app/`, the
+MongoDB data model, the email notification pipeline and the browser
+upload/verification UI are original work in this repository.
+
 ### 📝 License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
