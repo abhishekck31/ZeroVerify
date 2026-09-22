@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ClerkProvider } from "@clerk/nextjs";
+import { shadcn } from "@clerk/ui/themes";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { ThemeProvider } from "@/components/ui/theme-provider";
@@ -28,19 +29,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <html lang="en">
-          <body
-            className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-          >
+    // suppressHydrationWarning: next-themes sets the theme class on <html>
+    // before React hydrates, which would otherwise be reported as a mismatch.
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <ClerkProvider appearance={{ theme: shadcn }}>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <Header />
             <main className="pt-16">{children}</main>
             <Footer />
             <Toaster />
-          </body>
-        </html>
-      </ThemeProvider>
-    </ClerkProvider>
+          </ThemeProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }
