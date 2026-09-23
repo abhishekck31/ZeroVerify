@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 
 import { getVerifyName, sendProofMail } from "@/actions/nameActions";
-import * as asn1js from "asn1js";
 import { setEngine, CryptoEngine } from "pkijs";
 import { loadWasm } from "@/app/lib/wasm";
 import { matchesName } from "@/lib/fieldMatch";

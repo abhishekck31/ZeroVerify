@@ -30,7 +30,6 @@ import {
   getVerifyAcademic,
   sendAcademicProofMail,
 } from "@/actions/academicActions";
-import * as asn1js from "asn1js";
 import { setEngine, CryptoEngine } from "pkijs";
 import { loadWasm } from "@/app/lib/wasm";
 import {

@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 
 import { getVerifyPan, sendPanProofMail } from "@/actions/panActions";
-import * as asn1js from "asn1js";
 import { setEngine, CryptoEngine } from "pkijs";
 import { loadWasm } from "@/app/lib/wasm";
 import { matchesName, matchesPan } from "@/lib/fieldMatch";

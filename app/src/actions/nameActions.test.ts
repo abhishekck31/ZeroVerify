@@ -39,7 +39,7 @@ vi.mock("@/models/nameModel", () => {
       store.saved.push(this as unknown as Record<string, unknown>);
       return this;
     }
-    static async findById(_id: string) {
+    static async findById() {
       return store.doc;
     }
   }
