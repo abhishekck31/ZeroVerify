@@ -28,6 +28,12 @@ export default function Header() {
         <nav className="hidden md:flex items-center space-x-8 text-sm font-medium">
           <SignedIn>
             <Link
+              href="/dashboard"
+              className="hover:text-primary transition-colors"
+            >
+              Dashboard
+            </Link>
+            <Link
               href="/academic"
               className="hover:text-primary transition-colors"
             >
