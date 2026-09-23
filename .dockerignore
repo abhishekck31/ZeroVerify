@@ -1,0 +1,16 @@
+# Build context for circuits/Dockerfile, which is built from this directory.
+# Keeping the context small matters: app/node_modules alone is hundreds of MB
+# and none of it is needed to build the prover.
+
+.git/
+app/
+scripts/
+
+**/target/
+**/node_modules/
+**/pkg/
+**/.next/
+
+**/.env
+**/.env.local
+*.log
