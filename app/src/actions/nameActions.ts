@@ -8,6 +8,11 @@ import {
   toActionError,
 } from "@/lib/authz";
 import { consume, LIMITS } from "@/lib/rateLimit";
+import {
+  asProofObject,
+  ProofRejected,
+  verifyProofFor,
+} from "@/lib/proofVerification";
 
 import {
   sendNameVerificationEmail,
@@ -98,6 +103,11 @@ export async function sendProofMail(
       return { success: false as const, message: "This request is already completed." };
     }
 
+    // Check the proof before trusting it: it must be cryptographically valid
+    // and must be about this request's prover name, not some other string.
+    const proof = asProofObject(proofData);
+    await verifyProofFor(proof, nameVerify.proverName, "name");
+
     nameVerify.snark = proofData;
     nameVerify.isVerified = true;
     nameVerify.signature = publicKeyPEM;
@@ -111,6 +121,9 @@ export async function sendProofMail(
     );
     return { success: true as const, message: "Proof mail sent successfully" };
   } catch (err) {
+    if (err instanceof ProofRejected) {
+      return { success: false as const, message: err.message };
+    }
     return toActionError(err, "Could not submit the proof.");
   }
 }

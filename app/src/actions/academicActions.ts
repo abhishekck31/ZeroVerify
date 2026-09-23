@@ -9,6 +9,11 @@ import {
 } from "@/lib/authz";
 import { consume, LIMITS } from "@/lib/rateLimit";
 import {
+  asProofObject,
+  ProofRejected,
+  verifyProofFor,
+} from "@/lib/proofVerification";
+import {
   sendAcademicVerificationEmail,
   sendConfirmedAcademicVerificationEmail,
 } from "@/utils/mail/academicMail";
@@ -99,6 +104,27 @@ export async function sendAcademicProofMail(
       return { success: false as const, message: "This request is already completed." };
     }
 
+    // Each field is proved separately; every one is checked against the value
+    // stored on this request.
+    const submitted = asProofObject(proofData) as {
+      nameProof?: unknown;
+      academicIdProof?: unknown;
+      instituteProof?: unknown;
+      cgpaProof?: unknown;
+    };
+    await verifyProofFor(submitted?.nameProof, academicVerify.proverName, "name");
+    await verifyProofFor(
+      submitted?.academicIdProof,
+      academicVerify.proverAcademicId,
+      "academic ID"
+    );
+    await verifyProofFor(
+      submitted?.instituteProof,
+      academicVerify.proverInstitute,
+      "institute"
+    );
+    await verifyProofFor(submitted?.cgpaProof, academicVerify.proverCGPA, "CGPA");
+
     academicVerify.snark = proofData;
     academicVerify.isVerified = true;
     academicVerify.signature = publicKeyPEM;
@@ -115,6 +141,9 @@ export async function sendAcademicProofMail(
     );
     return { success: true as const, message: "Academic proof mail sent successfully" };
   } catch (err) {
+    if (err instanceof ProofRejected) {
+      return { success: false as const, message: err.message };
+    }
     return toActionError(err, "Could not submit the proof.");
   }
 }

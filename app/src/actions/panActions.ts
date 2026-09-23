@@ -9,6 +9,11 @@ import {
 } from "@/lib/authz";
 import { consume, LIMITS } from "@/lib/rateLimit";
 import {
+  asProofObject,
+  ProofRejected,
+  verifyProofFor,
+} from "@/lib/proofVerification";
+import {
   sendNamePanVerificationEmail,
   sendConfirmedPanVerificationMail,
 } from "@/utils/mail/panMail";
@@ -101,6 +106,15 @@ export async function sendPanProofMail(
       return { success: false as const, message: "This request is already completed." };
     }
 
+    // Both halves are proved separately, so both are checked - against this
+    // request's own name and PAN, not whatever the client claims they cover.
+    const submitted = asProofObject(proofData) as {
+      nameProof?: unknown;
+      panProof?: unknown;
+    };
+    await verifyProofFor(submitted?.nameProof, panVerify.proverName, "name");
+    await verifyProofFor(submitted?.panProof, panVerify.proverPanId, "PAN");
+
     panVerify.snark = proofData;
     panVerify.isVerified = true;
     panVerify.signature = publicKeyPEM;
@@ -115,6 +129,9 @@ export async function sendPanProofMail(
     );
     return { success: true as const, message: "Proof mail sent successfully" };
   } catch (err) {
+    if (err instanceof ProofRejected) {
+      return { success: false as const, message: err.message };
+    }
     return toActionError(err, "Could not submit the proof.");
   }
 }

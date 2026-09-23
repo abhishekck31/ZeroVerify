@@ -34,15 +34,18 @@ describe("consume", () => {
   });
 
   it("starts a fresh window once the old one has passed", () => {
-    const tiny = { max: 1, windowMs: 1 };
-    consume("carol", tiny);
-    expect(() => consume("carol", tiny)).toThrow(AuthError);
+    // A real window, so the limit cannot lapse on its own mid-test.
+    const one = { max: 1, windowMs: 60_000 };
+    consume("carol", one);
+    expect(() => consume("carol", one)).toThrow(AuthError);
 
-    // Move past the window rather than sleeping.
+    // Expire the window explicitly rather than waiting for wall-clock time.
     const buckets = (globalThis as { __rateBuckets?: Map<string, { resetAt: number }> })
       .__rateBuckets!;
     buckets.get("carol")!.resetAt = Date.now() - 1;
 
-    expect(() => consume("carol", tiny)).not.toThrow();
+    expect(() => consume("carol", one)).not.toThrow();
+    // ...and the fresh window is enforced in turn.
+    expect(() => consume("carol", one)).toThrow(AuthError);
   });
 });
