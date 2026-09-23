@@ -934,8 +934,13 @@ Before setting up ZeroVerify, ensure you have:
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/<your-username>/ZeroVerify.git
+   # --recursive brings in the Solidity dependencies the on-chain verifier
+   # needs (forge-std and sp1-contracts).
+   git clone --recursive https://github.com/abhishekck31/ZeroVerify.git
    cd ZeroVerify
+
+   # Already cloned without it?
+   #   git submodule update --init --recursive
    ```
 
 2. **Build the WASM PDF Module** (required — the frontend will not build without it)
