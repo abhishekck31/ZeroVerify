@@ -30,6 +30,7 @@ import { getVerifyPan, sendPanProofMail } from "@/actions/panActions";
 import * as asn1js from "asn1js";
 import { setEngine, CryptoEngine } from "pkijs";
 import { loadWasm } from "@/app/lib/wasm";
+import { matchesName, matchesPan } from "@/lib/fieldMatch";
 import PdfDropzone from "@/components/PdfDropzone";
 import { generateProof, verifyProof } from "@/lib/prover";
 
@@ -63,14 +64,6 @@ function publicKeyInfoToPEM(spkiBuffer: ArrayBuffer): string {
 function isValidPanId(panId: string): boolean {
   const panPattern = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
   return panPattern.test(panId);
-}
-
-function normalizeText(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 export default function EnhancedPANVerifier({
@@ -146,22 +139,14 @@ export default function EnhancedPANVerifier({
   }, []);
 
   const verifyNameInPages = useCallback(
-    (extractedPages: string[], proverName: string): boolean => {
-      const normalizedProverName = normalizeText(proverName);
-      return extractedPages.some((page) => {
-        const normalizedPage = normalizeText(page);
-        return normalizedPage.includes(normalizedProverName);
-      });
-    },
+    (extractedPages: string[], proverName: string): boolean =>
+      matchesName(extractedPages, proverName),
     []
   );
 
   const verifyPanIdInPages = useCallback(
-    (extractedPages: string[], proverPanId: string): boolean => {
-      return extractedPages.some((page) => {
-        return page.toUpperCase().includes(proverPanId.toUpperCase());
-      });
-    },
+    (extractedPages: string[], proverPanId: string): boolean =>
+      matchesPan(extractedPages, proverPanId),
     []
   );
 

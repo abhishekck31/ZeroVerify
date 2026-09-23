@@ -32,6 +32,12 @@ import {
 import * as asn1js from "asn1js";
 import { setEngine, CryptoEngine } from "pkijs";
 import { loadWasm } from "@/app/lib/wasm";
+import {
+  matchesAcademicId,
+  matchesCgpa,
+  matchesInstitute,
+  matchesName,
+} from "@/lib/fieldMatch";
 import PdfDropzone from "@/components/PdfDropzone";
 import { generateProof, verifyProof as verifyProofOnProver } from "@/lib/prover";
 
@@ -60,14 +66,6 @@ function publicKeyInfoToPEM(spkiBuffer: ArrayBuffer): string {
     ...lines,
     "-----END PUBLIC KEY-----",
   ].join("\n");
-}
-
-function normalizeText(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 export default function EnhancedAcademicVerifier({
@@ -157,40 +155,26 @@ export default function EnhancedAcademicVerifier({
   }, []);
 
   const verifyNameInPages = useCallback(
-    (extractedPages: string[], proverName: string): boolean => {
-      const normalizedProverName = normalizeText(proverName);
-      return extractedPages.some((page) =>
-        normalizeText(page).includes(normalizedProverName)
-      );
-    },
+    (extractedPages: string[], proverName: string): boolean =>
+      matchesName(extractedPages, proverName),
     []
   );
 
   const verifyAcademicIdInPages = useCallback(
-    (extractedPages: string[], proverAcademicId: string): boolean => {
-      return extractedPages.some((page) =>
-        normalizeText(page).includes(proverAcademicId.toLowerCase())
-      );
-    },
+    (extractedPages: string[], proverAcademicId: string): boolean =>
+      matchesAcademicId(extractedPages, proverAcademicId),
     []
   );
 
   const verifyCgpaInPages = useCallback(
-    (extractedPages: string[], proverCgpa: string): boolean => {
-      return extractedPages.some((page) =>
-        normalizeText(page).includes(proverCgpa.toLowerCase())
-      );
-    },
+    (extractedPages: string[], proverCgpa: string): boolean =>
+      matchesCgpa(extractedPages, proverCgpa),
     []
   );
 
   const verifyInstituteInPages = useCallback(
-    (extractedPages: string[], proverInstitute: string): boolean => {
-      const normalizedProverInstitute = normalizeText(proverInstitute);
-      return extractedPages.some((page) =>
-        normalizeText(page).includes(normalizedProverInstitute)
-      );
-    },
+    (extractedPages: string[], proverInstitute: string): boolean =>
+      matchesInstitute(extractedPages, proverInstitute),
     []
   );
 

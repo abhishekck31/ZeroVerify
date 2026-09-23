@@ -28,6 +28,7 @@ import { getVerifyName, sendProofMail } from "@/actions/nameActions";
 import * as asn1js from "asn1js";
 import { setEngine, CryptoEngine } from "pkijs";
 import { loadWasm } from "@/app/lib/wasm";
+import { matchesName } from "@/lib/fieldMatch";
 import PdfDropzone from "@/components/PdfDropzone";
 import { generateProof, verifyProof } from "@/lib/prover";
 
@@ -131,11 +132,8 @@ export default function EnhancedPDFVerifier({
   }, []);
 
   const verifyTextInPages = useCallback(
-    (extractedPages: string[], proverName: string): boolean => {
-      return extractedPages.some((page) =>
-        page.toLowerCase().includes(proverName.toLowerCase())
-      );
-    },
+    (extractedPages: string[], proverName: string): boolean =>
+      matchesName(extractedPages, proverName),
     []
   );
 
