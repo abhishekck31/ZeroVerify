@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Lock, Shield, Zap } from "lucide-react";
@@ -9,7 +11,14 @@ const Hero = () => {
 
       <div className="container px-4 md:px-6 relative z-10">
         <div className="flex flex-col items-center space-y-8 text-center max-w-4xl mx-auto">
-          <img src="/logo.png" alt="Logo" className="h-64 w-64" />
+          <Image
+            src="/logo.png"
+            alt="ZeroVerify"
+            width={256}
+            height={256}
+            className="h-64 w-64"
+            priority
+          />
           <div className="fade-in">
             <Badge variant="secondary" className="mb-4">
               <Shield className="w-3 h-3 mr-1" />

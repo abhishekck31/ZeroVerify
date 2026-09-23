@@ -112,12 +112,7 @@ export default function EnhancedAcademicVerifier({
     useState<boolean | null>(null);
   const [verifyingSnark, setVerifyingSnark] = useState(false);
 
-  useEffect(() => {
-    initPKIjs();
-    fetchVerificationData();
-  }, [id]);
-
-  const fetchVerificationData = async () => {
+  const fetchVerificationData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -140,7 +135,12 @@ export default function EnhancedAcademicVerifier({
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, accessToken]);
+
+  useEffect(() => {
+    initPKIjs();
+    fetchVerificationData();
+  }, [fetchVerificationData]);
 
   const resetPDFState = useCallback(() => {
     setPublicKeyPEM(null);

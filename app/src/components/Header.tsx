@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   SignedIn,
@@ -15,7 +16,14 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-colors">
       <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center space-x-2">
-          <img src="/logo.png" alt="Logo" className="h-8 w-8" />
+          <Image
+            src="/logo.png"
+            alt="ZeroVerify"
+            width={32}
+            height={32}
+            className="h-8 w-8"
+            priority
+          />
           <Link
             href="/"
             className="text-xl font-bold tracking-tight hover:opacity-80 transition-colors"

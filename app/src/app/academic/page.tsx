@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useUser, RedirectToSignIn } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,11 +35,8 @@ const AcademicVerificationPage = () => {
 
   const userEmail = user?.primaryEmailAddress?.emailAddress;
 
-  useEffect(() => {
-    if (userEmail) fetchDashboardData();
-  }, [userEmail]);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     if (!userEmail) return;
     setFetching(true);
     try {
@@ -59,7 +56,11 @@ const AcademicVerificationPage = () => {
     } finally {
       setFetching(false);
     }
-  };
+  }, [userEmail]);
+
+  useEffect(() => {
+    if (userEmail) fetchDashboardData();
+  }, [userEmail, fetchDashboardData]);
 
   if (!isLoaded) return <p>Loading...</p>;
   if (!isSignedIn || !user) return <RedirectToSignIn />;

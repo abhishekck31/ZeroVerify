@@ -97,12 +97,7 @@ export default function EnhancedPDFVerifier({
     useState<boolean | null>(null);
   const [verifyingSnark, setVerifyingSnark] = useState(false);
 
-  useEffect(() => {
-    initPKIjs();
-    fetchVerificationData();
-  }, [id]);
-
-  const fetchVerificationData = async () => {
+  const fetchVerificationData = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getVerifyName(id, accessToken);
@@ -120,7 +115,12 @@ export default function EnhancedPDFVerifier({
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, accessToken]);
+
+  useEffect(() => {
+    initPKIjs();
+    fetchVerificationData();
+  }, [fetchVerificationData]);
 
   const resetPDFState = useCallback(() => {
     setPublicKeyPEM(null);
