@@ -1,4 +1,5 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { AccessTokenError, verifyAccessToken } from "./accessToken";
 
 /**
  * Authorization helpers for server actions.
@@ -47,6 +48,58 @@ export function assertParticipant(
   }
 }
 
+/**
+ * How a caller proved they may act on a request: either a signed-in session,
+ * or a capability token from the emailed link.
+ */
+export type Access =
+  | { via: "session"; caller: Caller }
+  | { via: "token"; recipient: string };
+
+/**
+ * Resolves access to one request.
+ *
+ * A valid token from the link is accepted on its own, so a candidate needs no
+ * account; otherwise a session is required and the record still has to name
+ * the caller (checked by {@link assertAccess} once it is loaded).
+ */
+export async function resolveAccess(
+  kind: string,
+  id: string,
+  token?: string
+): Promise<Access> {
+  if (token) {
+    // Token failures are reported as-is: "this link has expired" is more use
+    // than "please sign in" to someone who followed a link from their inbox.
+    const payload = verifyAccessToken(token, kind, id);
+    return { via: "token", recipient: payload.to };
+  }
+  return { via: "session", caller: await requireCaller() };
+}
+
+/** Confirms the resolved access actually covers this record. */
+export function assertAccess(
+  access: Access,
+  record: { email?: string; recieverEmail?: string }
+): void {
+  if (access.via === "session") {
+    assertParticipant(record, access.caller);
+    return;
+  }
+
+  // The token is already bound to this request id by its signature; also
+  // require that the address it was issued to is still the one on record.
+  const recipient = (record.recieverEmail ?? "").toLowerCase();
+  if (recipient !== access.recipient) {
+    throw new AuthError("This link is no longer valid for this request.");
+  }
+}
+
+/** A stable rate-limit key for either kind of access. */
+export function accessKey(access: Access, requestId: string): string {
+  return access.via === "session" ? access.caller.email : "link:" + requestId;
+}
+
 /** Shape every action returns, so callers can keep using `result.success`. */
 export type ActionResult<T = undefined> =
   | { success: true; message: string; data?: T }
@@ -59,7 +112,7 @@ export type ActionResult<T = undefined> =
  * and reported generically so internal details do not reach the client.
  */
 export function toActionError(err: unknown, fallback: string): ActionResult<never> {
-  if (err instanceof AuthError) {
+  if (err instanceof AuthError || err instanceof AccessTokenError) {
     return { success: false, message: err.message };
   }
   console.error(fallback, err);

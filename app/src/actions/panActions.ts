@@ -3,8 +3,10 @@
 import connectToDB from "@/utils/connectToDb";
 import PanVerify from "@/models/panModel";
 import {
-  assertParticipant,
+  accessKey,
+  assertAccess,
   requireCaller,
+  resolveAccess,
   toActionError,
 } from "@/lib/authz";
 import { consume, LIMITS } from "@/lib/rateLimit";
@@ -64,16 +66,16 @@ export async function createPanVerify(
 }
 
 /** Reads one request. Only the employer and the candidate on it may do so. */
-export async function getVerifyPan(id: string) {
+export async function getVerifyPan(id: string, token?: string) {
   try {
-    const caller = await requireCaller();
+    const access = await resolveAccess("pan", id, token);
 
     await connectToDB();
     const panVerify = await PanVerify.findById(id);
     if (!panVerify) {
       return { success: false as const, message: "Pan Verify not found" };
     }
-    assertParticipant(panVerify, caller);
+    assertAccess(access, panVerify);
 
     return {
       success: true as const,
@@ -89,18 +91,19 @@ export async function getVerifyPan(id: string) {
 export async function sendPanProofMail(
   id: string,
   publicKeyPEM: string,
-  proofData: any
+  proofData: any,
+  token?: string
 ) {
   try {
-    const caller = await requireCaller();
-    consume(`sendPanProofMail:${caller.email}`, LIMITS.submitProof);
+    const access = await resolveAccess("pan", id, token);
+    consume(`sendPanProofMail:${accessKey(access, id)}`, LIMITS.submitProof);
 
     await connectToDB();
     const panVerify = await PanVerify.findById(id);
     if (!panVerify) {
       return { success: false as const, message: "Pan Verify not found" };
     }
-    assertParticipant(panVerify, caller);
+    assertAccess(access, panVerify);
 
     if (panVerify.isVerified) {
       return { success: false as const, message: "This request is already completed." };

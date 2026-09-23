@@ -3,8 +3,10 @@
 import connectToDB from "@/utils/connectToDb";
 import NameVerify from "@/models/nameModel";
 import {
-  assertParticipant,
+  accessKey,
+  assertAccess,
   requireCaller,
+  resolveAccess,
   toActionError,
 } from "@/lib/authz";
 import { consume, LIMITS } from "@/lib/rateLimit";
@@ -55,16 +57,16 @@ export async function createNameVerify(name: string, recieverEmail: string) {
 }
 
 /** Reads one request. Only the employer and the candidate on it may do so. */
-export async function getVerifyName(id: string) {
+export async function getVerifyName(id: string, token?: string) {
   try {
-    const caller = await requireCaller();
+    const access = await resolveAccess("name", id, token);
 
     await connectToDB();
     const nameVerify = await NameVerify.findById(id);
     if (!nameVerify) {
       return { success: false as const, message: "Name Verify not found" };
     }
-    assertParticipant(nameVerify, caller);
+    assertAccess(access, nameVerify);
 
     return {
       success: true as const,
@@ -86,18 +88,19 @@ export async function getVerifyName(id: string) {
 export async function sendProofMail(
   id: string,
   publicKeyPEM: string,
-  proofData: any
+  proofData: any,
+  token?: string
 ) {
   try {
-    const caller = await requireCaller();
-    consume(`sendProofMail:${caller.email}`, LIMITS.submitProof);
+    const access = await resolveAccess("name", id, token);
+    consume(`sendProofMail:${accessKey(access, id)}`, LIMITS.submitProof);
 
     await connectToDB();
     const nameVerify = await NameVerify.findById(id);
     if (!nameVerify) {
       return { success: false as const, message: "Name Verify not found" };
     }
-    assertParticipant(nameVerify, caller);
+    assertAccess(access, nameVerify);
 
     if (nameVerify.isVerified) {
       return { success: false as const, message: "This request is already completed." };

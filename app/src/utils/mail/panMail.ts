@@ -1,4 +1,5 @@
 import transporter from "./transporter";
+import { createAccessToken } from "@/lib/accessToken";
 export const sendNamePanVerificationEmail = async (
   to: string,
   fromEmail: string,
@@ -7,7 +8,12 @@ export const sendNamePanVerificationEmail = async (
   id: string
 ) => {
   try {
-    const verifyUrl = `${process.env.API_URL}/pan/${id}`;
+    // The candidate is usually not a ZeroVerify user, so the link
+    // carries a signed token that authorises this one request.
+    const accessToken = createAccessToken("pan", String(id), to);
+    const verifyUrl = `${process.env.API_URL}/pan/${id}?t=${encodeURIComponent(
+      accessToken
+    )}`;
 
     const mailOptions = {
       from: `"ZeroVerify" <${process.env.MAIL_USER}>`,

@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -73,6 +74,9 @@ export default function EnhancedPANVerifier({
 }) {
   // Next.js 15 passes params as a Promise; unwrap it for this client component.
   const { id } = React.use(params);
+  // Capability token from the emailed link, for candidates who do not
+  // have an account on the address the request names.
+  const accessToken = useSearchParams().get("t") ?? undefined;
   const [loading, setLoading] = useState(true);
   const [res, setRes] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +112,7 @@ export default function EnhancedPANVerifier({
   const fetchVerificationData = async () => {
     setLoading(true);
     try {
-      const data = await getVerifyPan(id);
+      const data = await getVerifyPan(id, accessToken);
       if (!data.success) {
         setError(data.message);
       } else {
@@ -289,7 +293,8 @@ export default function EnhancedPANVerifier({
       const result = await sendPanProofMail(
         res._id,
         publicKeyPEM ?? "",
-        proofData
+        proofData,
+        accessToken
       );
       if (!result.success) {
         throw new Error(result.message || "Failed to send proof mail");

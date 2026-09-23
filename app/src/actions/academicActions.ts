@@ -3,8 +3,10 @@
 import connectToDB from "@/utils/connectToDb";
 import AcademicVerify from "@/models/academicModel";
 import {
-  assertParticipant,
+  accessKey,
+  assertAccess,
   requireCaller,
+  resolveAccess,
   toActionError,
 } from "@/lib/authz";
 import { consume, LIMITS } from "@/lib/rateLimit";
@@ -62,16 +64,16 @@ export async function createAcademicVerify(
 }
 
 /** Reads one request. Only the employer and the candidate on it may do so. */
-export async function getVerifyAcademic(id: string) {
+export async function getVerifyAcademic(id: string, token?: string) {
   try {
-    const caller = await requireCaller();
+    const access = await resolveAccess("academic", id, token);
 
     await connectToDB();
     const academicVerify = await AcademicVerify.findById(id);
     if (!academicVerify) {
       return { success: false as const, message: "Academic Verify not found" };
     }
-    assertParticipant(academicVerify, caller);
+    assertAccess(access, academicVerify);
 
     return {
       success: true as const,
@@ -87,18 +89,19 @@ export async function getVerifyAcademic(id: string) {
 export async function sendAcademicProofMail(
   id: string,
   publicKeyPEM: string,
-  proofData: any
+  proofData: any,
+  token?: string
 ) {
   try {
-    const caller = await requireCaller();
-    consume(`sendAcademicProofMail:${caller.email}`, LIMITS.submitProof);
+    const access = await resolveAccess("academic", id, token);
+    consume(`sendAcademicProofMail:${accessKey(access, id)}`, LIMITS.submitProof);
 
     await connectToDB();
     const academicVerify = await AcademicVerify.findById(id);
     if (!academicVerify) {
       return { success: false as const, message: "Academic Verify not found" };
     }
-    assertParticipant(academicVerify, caller);
+    assertAccess(access, academicVerify);
 
     if (academicVerify.isVerified) {
       return { success: false as const, message: "This request is already completed." };

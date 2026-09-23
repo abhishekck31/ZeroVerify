@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,9 @@ export default function EnhancedAcademicVerifier({
 }) {
   // Next.js 15 passes params as a Promise; unwrap it for this client component.
   const { id } = React.use(params);
+  // Capability token from the emailed link, for candidates who do not
+  // have an account on the address the request names.
+  const accessToken = useSearchParams().get("t") ?? undefined;
   const [loading, setLoading] = useState(true);
   const [res, setRes] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +122,7 @@ export default function EnhancedAcademicVerifier({
     setLoading(true);
     setError(null);
     try {
-      const data = await getVerifyAcademic(id);
+      const data = await getVerifyAcademic(id, accessToken);
       if (!data.success) {
         setError(data.message);
         toast.error(data.message);
@@ -343,7 +347,8 @@ export default function EnhancedAcademicVerifier({
       const result = await sendAcademicProofMail(
         res._id,
         publicKeyPEM ?? "",
-        proofData
+        proofData,
+        accessToken
       );
       if (!result.success) {
         throw new Error(result.message || "Failed to send proof mail");
